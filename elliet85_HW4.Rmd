@@ -1,0 +1,115 @@
+---
+title: "elliet85_HW4"
+author: "Ellie Terry"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+    toc: true
+    toc_float: true
+   
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(captioner)
+library(foreign)
+library(bookdown)
+table_nums  <- captioner(prefix = "Table")
+figure_nums <- captioner(prefix = "Figure")
+library(pander)
+
+```
+
+
+
+```{r create-data, cache=TRUE}
+# read the dta file
+gradpain <- c(rep(0,11), rep(1,1), rep(2,2), rep(3,6), rep(4,8), rep(5,10),
+rep(6,8), rep(7,30), rep(8,10), rep(9,6), rep(10,2))
+
+
+#barplot(table(gradpain), las=1, ylab="Frequency", xlab="Pain Scale",
+#main="How painful is graduate school?")
+```
+## 1 & 2
+
+```{r}
+paste0("The number of graduate students in the sample is ", length(gradpain))
+
+paste0("The sample mean is ", sum(gradpain)/length(gradpain))
+
+```
+## 3 & 4
+
+```{r}
+function_calcmean<-function(d.vec, n){
+  sample<-sample(d.vec, n , replace=TRUE)
+  return(list(n=length(sample), mean=sum(sample)/length(sample)))
+}
+
+set.seed(7)
+
+NandMean<-list()
+NandMean$N<-list()
+NandMean$mean<-list()
+
+
+for (i in 1:100) {
+NandMean$N[[i]]<-function_calcmean(d.vec=gradpain, n=10)[[1]]
+  NandMean$mean[[i]]<-function_calcmean(d.vec=gradpain, n=10)[[2]]
+
+
+mean(unlist(NandMean$mean))
+sd(unlist(NandMean$mean))
+}
+
+```
+
+
+```{r}
+function_calcstats<-function(d.vec, n, num.samples){
+  
+Stats$num.samples<-num.samples 
+Stats$N<-n 
+  
+for (i in 1:100) {
+  sample<-sample(d.vec, n , replace=TRUE)
+  Stats$mean[[i]]<-sum(sample)/length(sample)
+}
+
+Stats$meanofmeans<-mean(unlist(Stats$mean))
+Stats$sd<-sd(unlist(Stats$mean))
+Stats$ci<-Stats$sd*1.96
+  
+return(Stats)
+
+}
+
+
+set.seed(7)
+
+Stats<-list()
+Stats$N<-list()  #size of samples
+Stats$mean<-list() 
+Stats$num.samples<-list() 
+Stats$sd<-list() 
+Stats$ci<-list() 
+
+Stats<-function_calcstats(d.vec=gradpain, n=10, num.samples=100)
+Stats
+```
+
+
+
+
+## Source Code
+
+```{r}
+
+cat(readLines("elliet85_HW4.Rmd"), sep = '\n')
+```
+

@@ -39,12 +39,18 @@ rep(6,8), rep(7,30), rep(8,10), rep(9,6), rep(10,2))
 ```
 ## 1 & 2
 
-```{r}
-paste0("The number of graduate students in the sample is ", length(gradpain))
 
-paste0("The sample mean is ", sum(gradpain)/length(gradpain))
+```{r}
+#paste0("The number of graduate students in the sample is ", length(gradpain))
+
+#paste0("The sample mean is ", sum(gradpain)/length(gradpain))
+
 
 ```
+The sample mean is `r sum(gradpain)/length(gradpain)`
+
+The number of graduate students in the sample is `r length(gradpain)`
+
 ## 3 & 4
 
 ```{r}

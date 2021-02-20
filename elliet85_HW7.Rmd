@@ -1,0 +1,194 @@
+---
+title: "elliet85_HW7"
+author: "Ellie Terry"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(haven)
+library(tidyverse)
+library(readstata13)
+library(kableExtra)
+```
+
+
+#read in add health data and select four vars 
+#note:do not use health, height , weight, race or bmi as they were used in class
+
+```{r}
+
+addhealth <- haven::read_dta("data/21600-0001-Data.dta")
+
+#dataset label
+attributes(addhealth)$label
+#variable label (this is visible in the viewer too)
+attributes(addhealth$AID)$label
+
+#look through dataset for variables to keep
+
+ahcomplete_metadata <- bind_cols(
+    varname = colnames(addhealth),
+    varlabel = addhealth %>% map(~ attributes(.)$label) %>% unlist()
+)
+
+DT::datatable(ahcomplete_metadata)
+```
+
+
+
+#After searching through the variable labels above, I choose to keep (interview year (IYEAR), biological sex (BIO_SEX), mother has diabetes (PC49F_2), dad has diabetes (PC49F_3 ), and household income (PA55)
+
+```{r}
+addhealth_2<- addhealth %>% 
+  select (IYEAR, BIO_SEX, PC49F_2, PC49F_3, PA55) %>% 
+  rename("Diabetes_mom"=PC49F_2, "Diabetes_dad"=PC49F_3, "HouseholdIncome"=PA55)
+```
+
+
+#Let's look at what the coding means for these variables . 'label' tells variable label . 'labels' tells value label, attributes () tells you both. Only bio_sex has a value label. Will need to go the codebook (https://addhealth.cpc.unc.edu/documentation/codebook-explorer/#/search_variable?field=varname&match=contains&text=PA55) to figure out what the coding means. 
+```{r}
+attributes(addhealth$PIYEAR)
+attributes(addhealth$BIO_SEX)$labels
+attributes(addhealth$Diabetes_mom)$labels
+attributes(addhealth$Diabetes_dad)$labels
+attributes(addhealth$HouseholdIncome)$labels
+```
+
+#stratify by household income
+# the question is the following: "About how much total income, before taxes did your family receive in 1994? Include your own income, the income of everyone else in your household, and income from welfare benefits, dividends, and all other sources."
+# . is missing, 0-999 is income and 9996 is refused. 
+
+
+recode variables
+```{r}
+##income question##
+
+#recode  refused (9996) to missing
+addhealth_2 <-addhealth_2 %>% 
+ mutate(HouseholdIncome= case_when(as.numeric(HouseholdIncome)>999 ~ NA_real_, TRUE ~ as.numeric(HouseholdIncome)))
+
+#determine income percentiles using available data
+incbreaks <- quantile(x = addhealth_2$HouseholdIncome, probs = c(0.10, .25, .50,.75, .90), na.omit(addhealth_2$HouseholdIncome))
+  
+#put ppl income income categories based on percentiles in income distribution
+addhealth_3 <- addhealth_2 %>% 
+          mutate(incomegroups = cut(x = HouseholdIncome, 
+                                    breaks = c(0, incbreaks,999), 
+                                    labels = c("0-10","11-25", "25-49", "50-75",                                           "76-90", "91-100"), 
+                                    include.lowest = TRUE) %>% 
+          factor(ordered = TRUE))  
+attributes(addhealth_3$incomegroups)$label<-"Household Income Groups"
+
+
+##sex##
+addhealth_4<-addhealth_3 %>% 
+  mutate(sex= case_when(BIO_SEX==1 ~ "Female", 
+                        BIO_SEX==2 ~ "Male", 
+                        BIO_SEX == 6 | BIO_SEX==8 ~ "Refused/Don't Know"
+                        , TRUE~"look for coding errors"))
+
+attributes(addhealth_4$sex)$label<-"Sex"
+
+
+##Diabetes##
+addhealth_5<-addhealth_4 %>% 
+  mutate(
+    Diabetes_mom=(case_when(as.numeric(Diabetes_mom)==6|as.numeric(Diabetes_mom)==8 ~ NA_real_,                         TRUE~as.numeric(Diabetes_mom))),
+  Diabetes_dad=(case_when(as.numeric(Diabetes_dad)==6|as.numeric(Diabetes_dad)==8 ~ NA_real_,                         TRUE~as.numeric(Diabetes_dad))))
+  
+
+addhealth_5$Diabetes_mom<-factor(addhealth_5$Diabetes_mom, labels=c("No", "Yes"), ordered=TRUE)
+addhealth_5$Diabetes_dad<-factor(addhealth_5$Diabetes_dad, labels=c("No", "Yes"), ordered=TRUE)
+
+attributes(addhealth_5$Diabetes_mom)$label<-"Mother has Diabetes"
+attributes(addhealth_5$Diabetes_dad)$label<-"Father has Diabetes"
+
+```
+
+#create data table w/ counts and percentages of each variable
+
+```{r}
+addhealth_5 %>% 
+    group_by(incomegroups) %>% 
+    summarise(n = n()) %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+
+
+addhealth_5 %>% 
+    group_by(sex) %>% 
+    summarise(n = n()) %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+
+
+addhealth_5 %>% 
+    group_by(IYEAR) %>% 
+    summarise(n = n()) %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+
+addhealth_5 %>% 
+    group_by(Diabetes_dad) %>% 
+    summarise(n = n()) %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+
+addhealth_5 %>% 
+    group_by(Diabetes_mom) %>% 
+    summarise(n = n()) %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+
+
+```
+
+#create data table from two variables 
+
+```{r}
+addhealth_5 %>% 
+    group_by(incomegroups,
+             sex) %>% 
+    summarise(n = n(), .groups = "drop_last") %>% 
+    mutate(`%` = n / sum(n) * 100) %>% 
+    mutate(`%` = `%` %>% round(1)) %>% 
+    kable() %>% 
+    kable_styling(full_width = FALSE, position = "left")
+```
+
+#create one graph
+```{r}
+ggplot(addhealth_5, aes(x = HouseholdIncome)) +
+    geom_histogram(bins = 100) +
+    geom_vline(xintercept = incbreaks)
+```
+
+#label the dataset 
+```{r}
+attributes(addhealth_5)$label <- "Select Vars from the National Longitudinal Study of Adolescent to Adult Health"
+
+#confirm
+attributes(addhealth_5)$label
+```
+
+
+```{r}
+saveRDS(addhealth, "SelectVars_From_AddHealth.rds")
+```
+

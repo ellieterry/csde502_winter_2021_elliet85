@@ -1,0 +1,103 @@
+---
+title: "elliet85_HW_10"
+author: "Ellie Terry"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    bibliography: hw10.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(tidyverse)
+library(pander)
+library(readxl)
+library(kableExtra)
+library(captioner)
+
+```
+
+```{r}
+table_nums <- captioner(prefix = "Table")
+figure_nums <- captioner(prefix = "Figure")
+```
+
+```{r import_data}
+births <- read.table("ISLbirth.txt", sep=",", header = T) 
+
+births <- births %>%
+  set_names(~ str_to_lower(.) %>%
+              str_replace_all(" ", "_")) %>% 
+ filter(year %in% c(1960:2018)) %>% 
+ select(year, births, sex)
+
+deaths <- read.table("ISLdeath.txt", sep=",", header = T) 
+deaths <- deaths %>%
+  set_names(~ str_to_lower(.) %>%
+              str_replace_all(" ", "_")) %>% 
+  filter(year %in% c(1960:2018)) %>% 
+  select(year,age, deaths, sex) 
+  
+deaths2 <-deaths %>% 
+  group_by(year,sex) %>% 
+   summarise(deaths=sum(deaths))
+
+#gdp <- gdp%>% 
+#  filter(year %in% c(1960:2018)) %>% 
+#  mutate(year = as.integer(year))
+#gdp <- read_excel("Iceland_gdp.xls") 
+
+```
+
+#Research question
+
+In this paper I use Data from the Human Mortality Database to examine birth and death trends in Iceland
+
+```{r bind_data}
+iceland <- as.data.frame(left_join(births, deaths2))
+```
+
+#Analysis
+
+The figure below shows how births and deaths have changed over time. Notably there is an upward trend in deaths Iceland with a spike in 2016. 
+```{r, fig.cap= "Births and Deaths in Iceland: 1960-2018"}
+ggplot(data = iceland,
+ aes(x = year)) +
+  geom_line(aes(y = births, color="Births"), size = 1) +
+  geom_line(aes(y = deaths, color="Deaths"), size = 1) +
+  ylab("Number of Births and Deaths") +
+  xlab("Year") +
+  scale_color_manual("",
+                     breaks = c("Births", "Deaths"),
+                     values = c("goldenrod", "skyblue3")) +
+  ggtitle("Births and Deaths in Iceland, 1960-2018") +
+  theme(legend.position = "bottom")
+ 
+```
+
+What was the source of the increase in deaths in 2016? The table below shows deaths by age group in 2016 versus 2017.
+```{r}
+
+table2 <- deaths %>%
+  filter(year %in% c(2016,2017)) %>% 
+  group_by(year,age) %>% 
+  summarise(`Total Deaths` = sum(deaths)) %>% 
+  arrange(age,year)
+  
+kable(table2, caption = "Deaths by Age in 2016 vs 2017") %>% 
+  kable_styling(full_width = T, position = "center")
+```
+
+#Results
+The Results show that the source of the spike in 2016 occurred in nearly all age groups. 
+
+#References
+---
+nocite: '@*'
+---
+
+
